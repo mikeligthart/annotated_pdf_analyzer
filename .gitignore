@@ -1,5 +1,6 @@
 # CUSTOM GITIGNORE
 input/
+output/
 
 # GENERATED GITIGNORE
 # Byte-compiled / optimized / DLL files
