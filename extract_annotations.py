@@ -32,7 +32,7 @@ class ExtractAnnotationsFromPDF:
             if participant_id in exclude:
                 print(f'Participant {participant_id} is on exclusion list.')
             else:
-                print(f'Processing participant: {participant_id}')
+           #     print(f'Processing participant: {participant_id}')
                 annotations.append({
                     'participant_id': participant_id,
                     'title': title,
@@ -201,8 +201,7 @@ def show_word_clouds(separated_annotations, stop_words): # Present word clouds f
         # plt.show()
 
 
-def html_input(full_texts, separated_annotations): # Generate input for HTML, including the list of sentences, highlight count, and comments 
-    for title, text in full_texts.items():
+def html_input(title,text, separated_annotations): # Generate input for HTML, including the list of sentences, highlight count, and comments 
          sentence_list = [s.strip() + '.' for s in ''.join(text.splitlines()).split('.') if s.strip()]
          highlight_counts = np.zeros(len(sentence_list))
         # Create empty sublists using a list comprehension
@@ -223,7 +222,7 @@ def html_input(full_texts, separated_annotations): # Generate input for HTML, in
                         comments.append(separated_annotations[title]['comments'][comment].strip())
                 comments_output.append([sentence, str(int(highlight_counts[i])), comments])
 
-    return sentence_list, highlight_counts, comments_output
+         return sentence_list, highlight_counts, comments_output
 
 
 def generate_html(title, sentences, annotations, comments):     # Generate HTML code for the title
@@ -271,21 +270,23 @@ def generate_html(title, sentences, annotations, comments):     # Generate HTML 
 if __name__ == '__main__':
     analyser = ExtractAnnotationsFromPDF('input')
     annotations = analyser.extract_annotations(exclude=[52])
+    print(annotations)
     separated_annotations = pair_highlight_to_text(annotations)
     full_texts = process_texts('input/', 3)
     stop_words = set(stopwords.words('english'))          # Define stopwords to be removed
-    show_word_clouds(separated_annotations, stop_words)
+  #  show_word_clouds(separated_annotations, stop_words)
     output_dir = "output"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    sentence_list, highlight_counts, comments_output = html_input(full_texts, separated_annotations)
+
 
     for title, text in full_texts.items():
-         html_output = generate_html(title, sentence_list, highlight_counts, comments_output).encode('ascii', 'ignore').decode()
+        sentence_list, highlight_counts, comments_output = html_input(title, text, separated_annotations)
+        html_output = generate_html(title, sentence_list, highlight_counts, comments_output).encode('ascii', 'ignore').decode()
 
-         html_filename = os.path.join(output_dir, f"{title}.html")
-         png_filename = os.path.join(output_dir, f"{title}.png")
+        html_filename = os.path.join(output_dir, f"{title}.html")
+        png_filename = os.path.join(output_dir, f"{title}.png")
 
-         with open(html_filename, "w") as f:
+        with open(html_filename, "w") as f:
             f.write(html_output)
