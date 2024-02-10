@@ -187,11 +187,12 @@ def extract_text_from_pages(pdf_path, start_page):  # Extract text from a specif
     return text
 
 
-def process_texts(folder_path, start_page): # Process complete texts
+def process_texts(folder_path, start_page, exclude): # Process complete texts
     full_texts = {}
     
     for filename in os.listdir(folder_path):
-        if filename.endswith(".pdf"):
+        if filename.endswith(".pdf") and int(filename.split('.')[0]) not in exclude:
+            print(filename)
             pdf_path = os.path.join(folder_path, filename)
             text = extract_text_from_pages(pdf_path, start_page)
             # Extract the first line as title
@@ -287,15 +288,17 @@ def html_input(title,text, separated_annotations): # Generate input for HTML, in
          # Process the text with SpaCy
          doc = nlp(text)
         # Extract sentences
-         sentence_list = [sent.text.strip() for sent in doc.sents]
+         sentence_list = [sent.text.strip().replace('\n', '') for sent in doc.sents]
+         print(sentence_list)
 
          highlight_counts = np.zeros(len(sentence_list))
         # Create empty sublists using a list comprehension
          comments_indices = [[] for _ in range(len(sentence_list))]
 
          for annotation_index in range(len(separated_annotations[title]['sentences'])):
+         #   print(separated_annotations[title]['sentences'][annotation_index])
             for i in range(len(sentence_list)):
-             if separated_annotations[title]['sentences'][annotation_index] in sentence_list[i]:
+             if separated_annotations[title]['sentences'][annotation_index].strip() in sentence_list[i]:
                  if separated_annotations[title]['comments'][annotation_index] not in [separated_annotations[title]['comments'][index] for index in comments_indices[i]]:
                     highlight_counts[i] += 1
                     comments_indices[i].append(annotation_index)
@@ -415,11 +418,10 @@ if __name__ == '__main__':
         os.makedirs(output_dir)
     analyser = ExtractAnnotationsFromPDF('input')
     annotations = analyser.extract_annotations(exclude=[52])
-    print(annotations)
-    info_dataframe =  create_dataframe(annotations)
-    info_dataframe.to_csv('output/scenario_dataframe.csv', index=False)
+ #   info_dataframe =  create_dataframe(annotations)
+ #   info_dataframe.to_csv('output/scenario_dataframe.csv', index=False)
     separated_annotations = pair_highlight_to_text(annotations)
-    full_texts = process_texts('input/', 3)
+    full_texts = process_texts('input/', 3, [52])
     stop_words = set(stopwords.words('english'))          # Define stopwords to be removed
   #  show_word_clouds(separated_annotations, stop_words)
 
