@@ -54,13 +54,6 @@ class ExtractAnnotationsFromPDF:
 
         highlights = []
         comments = []
-       # for page in doc:
-        # for page_num in range(2, doc.page_count):
-        #     page = doc.load_page(page_num)
-
-        #     highlights += self._extract_highlights_from_page(page)  # extract highlighted text
-        #     for annot in page.annots():
-        #         comments.append(annot.info["content"])  # extract text from comments
 
         for page_num in range(2, doc.page_count):
             page = doc.load_page(page_num)
@@ -137,21 +130,6 @@ class ExtractAnnotationsFromPDF:
         
         return [self._parse_highlight(annot, wordlist) for annot in sorted_annotations]
 
-    # def _extract_highlights_from_page(self, page):
-    #     """ Extract all highlights from a page"""
-    #     highlights = []
-
-    #     # Extract highlights from annotations
-    #     annot = page.first_annot
-    #     while annot:
-    #         if annot.type[0] == 8:
-    #             highlights.append(self._parse_highlight(annot))
-    #         annot = annot.next
-
-    #     # Sort highlights based on their vertical position (y-coordinate)
-    #     highlights.sort(key=lambda h: h['bounding_box'][1])  # Sort by the y-coordinate of the top-left corner
-
-    #     return highlights
 
 
     @staticmethod
@@ -192,7 +170,6 @@ def process_texts(folder_path, start_page, exclude): # Process complete texts
     
     for filename in os.listdir(folder_path):
         if filename.endswith(".pdf") and int(filename.split('.')[0]) not in exclude:
-            print(filename)
             pdf_path = os.path.join(folder_path, filename)
             text = extract_text_from_pages(pdf_path, start_page)
             # Extract the first line as title
@@ -289,7 +266,6 @@ def html_input(title,text, separated_annotations): # Generate input for HTML, in
          doc = nlp(text)
         # Extract sentences
          sentence_list = [sent.text.strip().replace('\n', '') for sent in doc.sents]
-         print(sentence_list)
 
          highlight_counts = np.zeros(len(sentence_list))
         # Create empty sublists using a list comprehension
@@ -314,46 +290,6 @@ def html_input(title,text, separated_annotations): # Generate input for HTML, in
 
          return sentence_list, highlight_counts, comments_output
 
-
-# def generate_html(title, sentences, annotations, comments):     # Generate HTML code for the title
-#     html_title = f'<h1>{title}</h1>'
-    
-#     # Generate HTML code for the sentences with highlighted background and black text
-#     html_sentences = []
-#     for sentence, num_annotations in zip(sentences, annotations):
-#         # Calculate the brightness of the color based on the number of annotations
-#         brightness = int((num_annotations / max(annotations)) * 255)
-#         # Convert brightness to hexadecimal color code for highlight
-#         highlight_color = "#{:02x}{:02x}{:02x}".format(255, 255-brightness, 255-brightness)  # White to red gradient
-        
-#         # Generate HTML code for the sentence with highlighted background and black text
-#         html_sentence = f'<div><span style="background-color:{highlight_color};">{sentence}</span></div>'
-#         html_sentences.append(html_sentence)
-    
-#     # Concatenate HTML-coded sentences into a single HTML string
-#     html_output = html_title + '<div class="heatmap">' + ''.join(html_sentences) + '</div>'
-    
-#     # Add whitespace between sections
-#     html_output += '<br><br>'
-    
-#     # Add subtitle for comments
-#     html_output += '<h2>Comments on the highlighted areas</h2>'
-    
-#     # Generate HTML code for the comments for each sentence
-#     for i, sentence_comments in enumerate(comments):
-#         sentence_comment = sentence_comments[0]
-#         num_times_marked = sentence_comments[1]
-#         additional_comments = sentence_comments[2]
-
-#         # Add section for each sentence
-#         html_output += f'<div><h3>{i+1}. Sentence: {sentence_comment}</h3>'
-#         html_output += f'<p>Times marked: {num_times_marked}</p>'
-#         html_output += '<p>Comments:</p><ul>'
-#         for comment in additional_comments:
-#             html_output += f'<li>{comment}</li>'
-#         html_output += '</ul></div><br>'
-    
-#     return html_output
 
 def generate_html(title, sentences, annotations, comments):
     # Generate HTML code for the title
@@ -402,7 +338,7 @@ def create_dataframe(annotations):
     for d in annotations:
         for annotation in d['annotations']:
             flattened_annotations.append({'participant_id': d['participant_id'],
-                                        'title_scenario': d['title'],
+                                        'title_scenario': d['title'].strip(),
                                         'annotation_sentence': annotation[0],
                                         'annotation_comment': annotation[1]})
 
@@ -418,8 +354,8 @@ if __name__ == '__main__':
         os.makedirs(output_dir)
     analyser = ExtractAnnotationsFromPDF('input')
     annotations = analyser.extract_annotations(exclude=[52])
- #   info_dataframe =  create_dataframe(annotations)
- #   info_dataframe.to_csv('output/scenario_dataframe.csv', index=False)
+    info_dataframe =  create_dataframe(annotations)
+    info_dataframe.to_csv('output/scenario_dataframe.csv', index=False)
     separated_annotations = pair_highlight_to_text(annotations)
     full_texts = process_texts('input/', 3, [52])
     stop_words = set(stopwords.words('english'))          # Define stopwords to be removed
