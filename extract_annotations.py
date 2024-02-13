@@ -38,6 +38,40 @@ class ExtractAnnotationsFromPDF:
             doc = fitz.open(self.path_to_source_folder + '/' + pdf)
             page = doc.load_page(3 - 1)
             title = page.get_text().split('\n', 1)[0]
+            # extract_experience does not work for these participants: manual extraction for now 
+            if participant_id == 5:
+                experience_elderly, experience_writing = '1', '1'
+            elif participant_id == 18:
+                experience_elderly, experience_writing = '1', '1'
+            elif participant_id == 24:
+                experience_elderly, experience_writing = '1', '2'
+            elif participant_id == 27:
+                experience_elderly, experience_writing = '1', '1'
+            elif participant_id == 32:
+                experience_elderly, experience_writing = '3', '2'
+            elif participant_id == 38:
+                experience_elderly, experience_writing = '3', '1'
+            elif participant_id == 48:
+                experience_elderly, experience_writing = '3', '2'
+            elif participant_id == 51:
+                experience_elderly, experience_writing = '5', '3'
+            elif participant_id == 58:
+                experience_elderly, experience_writing = '5', '1'
+            elif participant_id == 62:
+                experience_elderly, experience_writing = '1', '3'
+            elif participant_id == 64:
+                experience_elderly, experience_writing = '1', '1'
+            elif participant_id == 64:
+                experience_elderly, experience_writing = '1', '1'
+            elif participant_id == 66:
+                experience_elderly, experience_writing = '2', '2'
+            elif participant_id == 7:
+                experience_elderly, experience_writing = '4', '3'
+            elif participant_id == 71:
+                experience_elderly, experience_writing = '4', '1'
+            else:
+                experience_elderly, experience_writing = self.extract_experience(join(self.path_to_source_folder, pdf))
+            
             if participant_id in exclude:
                 print(f'Participant {participant_id} is on exclusion list.')
             else:
@@ -45,9 +79,33 @@ class ExtractAnnotationsFromPDF:
                 annotations.append({
                     'participant_id': participant_id,
                     'title': title,
-                    'annotations': self._extract_annotations_in_pdf(join(self.path_to_source_folder, pdf))
+                    'annotations': self._extract_annotations_in_pdf(join(self.path_to_source_folder, pdf)),
+                    'experience_elderly': experience_elderly,
+                    'experience_writing': experience_writing
+
                 })
         return annotations
+    
+    def extract_experience(self,path_to_test_pdf):
+        doc = fitz.open(path_to_test_pdf)
+        page = doc.load_page(1)
+        text = ""
+        for b in page.get_text("dict")["blocks"]:
+            if b['type'] == 0:  # 0 represents text
+                for l in b["lines"]:
+                    for s in l["spans"]:
+                        text += s["text"]
+
+        pattern = r'\d'
+        
+        # Find all matches of the pattern in the text
+        matches = re.findall(pattern, text)       
+                # If match is found, return the digits, otherwise return None
+        if int(matches[-1]) <= 5 and int(matches[-2]) <= 5 and matches[-2:] != ['1','5']:
+            return matches[-2], matches[-1]
+        else:
+            return 'unknown','unknown'
+
 
     def _extract_annotations_in_pdf(self, path_to_test_pdf):
         doc = fitz.open(path_to_test_pdf)
@@ -195,12 +253,12 @@ def pair_highlight_to_text(annotations): # Separate the highlights based on the 
         title = item['title'].strip()
         if title not in separated_annotations:
             # Initialize separate lists for i[0] and i[1]
-            separated_annotations[title] = {'sentences': [], 'comments': []} #participants_ids
+            separated_annotations[title] = {'sentences': [], 'comments': [], 'participants_ids': []} #participants_ids
         
         # Append i[0] and i[1] to their respective lists
         separated_annotations[title]['sentences'].extend([i[0] for i in item['annotations']])
         separated_annotations[title]['comments'].extend([i[1] for i in item['annotations']])
-    #    separated_annotations[title]['participants_ids'].extend([item['participant_id'] for _ in item['annotations']])
+        separated_annotations[title]['participants_ids'].extend([item['participant_id'] for _ in item['annotations']])
 
 
 
@@ -208,7 +266,7 @@ def pair_highlight_to_text(annotations): # Separate the highlights based on the 
         # Split each sentence into separate items based on '.'
             split_sentences = []
             split_comments = []
-       #     split_participant_ids =
+            split_participant_ids = []
 
             for i, sentence in enumerate(sentences['sentences']):
                 # Split text into sentences
@@ -218,11 +276,16 @@ def pair_highlight_to_text(annotations): # Separate the highlights based on the 
                 split_sentences.extend(split_items)
                 # Add comments for each sentence
                 split_comments.extend([sentences['comments'][i]] * len(split_items))
-     #           split_participant_ids.extend([sentences['comments'][i]] * len(split_items))
+                    # Add participants for each sentence
+                split_participant_ids.extend([sentences['participants_ids'][i]] * len(split_items))
+             #   print(len(split_comments),len(split_participant_ids))
 
 
             separated_annotations[title]['sentences'] = split_sentences
             separated_annotations[title]['comments'] = split_comments
+            separated_annotations[title]['participants_ids'] = split_participant_ids
+            
+
 
     return separated_annotations
 
@@ -265,7 +328,8 @@ def html_input(title,text, separated_annotations): # Generate input for HTML, in
          # Process the text with SpaCy
          doc = nlp(text)
         # Extract sentences
-         sentence_list = [sent.text.strip().replace('\n', '') for sent in doc.sents]
+         sentence_list = [sent.text.strip().replace('\n', '') for sent in doc.sents] 
+         sentence_list_output = [sent.text.strip().replace('\n', '') for sent in doc.sents]
 
          highlight_counts = np.zeros(len(sentence_list))
         # Create empty sublists using a list comprehension
@@ -285,10 +349,10 @@ def html_input(title,text, separated_annotations): # Generate input for HTML, in
             if highlight_counts[i] > 0:
                 for comment in comments_indices[i]:
                     if not separated_annotations[title]['comments'][comment].strip() is '':
-                        comments.append(separated_annotations[title]['comments'][comment].strip())
+                        comments.append(separated_annotations[title]['comments'][comment].strip() + " (" + str(separated_annotations[title]['participants_ids'][comment]) + ")")
                 comments_output.append([sentence, str(int(highlight_counts[i])), comments])
 
-         return sentence_list, highlight_counts, comments_output
+         return sentence_list_output, highlight_counts, comments_output
 
 
 def generate_html(title, sentences, annotations, comments):
@@ -340,7 +404,9 @@ def create_dataframe(annotations):
             flattened_annotations.append({'participant_id': d['participant_id'],
                                         'title_scenario': d['title'].strip(),
                                         'annotation_sentence': annotation[0],
-                                        'annotation_comment': annotation[1]})
+                                        'annotation_comment': annotation[1],
+                                        'experience_elderly': d['experience_elderly'],
+                                        'experience_writing': d['experience_writing']})
 
     # Create DataFrame
     df = pd.DataFrame(flattened_annotations)
